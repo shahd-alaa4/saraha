@@ -3,11 +3,12 @@ import { NODE_ENV, port } from '../config/config.service.js'
 import { connectDB } from './DB/index.js'
 import { authRouter, userRouter } from './modules/index.js'
 import express from 'express'
+import cors from "cors"
 
 async function bootstrap() {
     const app = express()
     //convert buffer data
-    app.use(express.json())
+    app.use(cors(),express.json())
     //DB
     await connectDB()
     //application routing
@@ -15,6 +16,7 @@ async function bootstrap() {
     app.use('/auth', authRouter)
     app.use('/user', userRouter)
 
+    app.use("/uploads", express.static("uploads"));
 
     //invalid routing
     app.use('{/*dummy}', (req, res) => {
