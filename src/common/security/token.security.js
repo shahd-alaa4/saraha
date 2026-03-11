@@ -3,8 +3,12 @@ import { ACCESS_EXPIRES_IN, REFRESH_EXPIRES_IN, SYSTEM_REFRESH_TOKEN_SECRET_KEY,
 import { RoleEname } from '../enums/user.enum.js';
 import { AudienceEname, TokenTypeEname } from '../enums/security.enum.js';
 import { findOne, userMadel } from '../../DB/index.js';
-import { badRequestException, unauthorizedException } from '../utils/response/error.response.js';
+import { badRequestException, notfoundException, unauthorizedException } from '../utils/response/error.response.js';
 import { model } from 'mongoose';
+import { randomUUID } from 'node:crypto';
+import { tokenModel } from '../../DB/model/token.model.js';
+import { get, revokeTokenKey } from '../services/redis.service.js';
+
 
 export const generateToken = async ({
     payload = {},
@@ -60,13 +64,15 @@ export const getSignatureLevel = async (audienceType) => {
 export const createLoginCredentials = async (user, issuer) => {
     const { accessSignature, refreshSignature, audience } = await getTokenSignature(user.role)
 
+    const jwtid = randomUUID()
     const access_token = await generateToken({
         payload: { sub: user._id },
         secret: accessSignature,
         Option: {
             issuer,
             audience: [TokenTypeEname.access, audience],
-            expiresIn: ACCESS_EXPIRES_IN
+            expiresIn: ACCESS_EXPIRES_IN,
+            jwtid
         },
 
     })
@@ -77,7 +83,8 @@ export const createLoginCredentials = async (user, issuer) => {
         Option: {
             issuer,
             audience: [TokenTypeEname.refresh, audience],
-            expiresIn: REFRESH_EXPIRES_IN
+            expiresIn: REFRESH_EXPIRES_IN,
+            jwtid
         },
 
     })
@@ -85,16 +92,24 @@ export const createLoginCredentials = async (user, issuer) => {
 }
 
 export const decodeToken = async ({ token, tokenType = TokenTypeEname.access } = {}) => {
-    const decode = jwt.decode(token)
+    const decoded = jwt.decode(token)
 
-    console.log({ decode });
-    if (!decode?.aud?.length) {
-        throw  badRequestException({ message: "fail to decode this token" })
+    console.log({ decoded });
+    if (!decoded?.aud?.length) {
+        throw badRequestException({ message: "fail to decode this token" })
     }
-    const [decodeTokenType, audienceType] = decode.aud;
+    const [decodeTokenType, audienceType] = decoded.aud;
     if (decodeTokenType !== tokenType) {
         throw badRequestException({ message: "Invalid token type" })
     }
+
+    if (decoded.jti && await get(revokeTokenKey({
+        userId: decoded.sub,
+        jti: decoded.jti
+    }))) {
+        throw unauthorizedException({ message: "Invalid login session" })
+    }
+
     const signatureLevel = await getSignatureLevel(audienceType)
     const { accessSignature, refreshSignature } = await getTokenSignature(signatureLevel)
     console.log({ accessSignature, refreshSignature });
@@ -103,16 +118,28 @@ export const decodeToken = async ({ token, tokenType = TokenTypeEname.access } =
         token,
         secret: tokenType == TokenTypeEname.refresh ? refreshSignature : accessSignature
     })
-    console.log({ verifedData });
+
+    if (!verifedData?.sub) {
+        throw badRequestException({ message: "Invalid token payload" })
+    }
+    // console.log({ verifedData });
     const user = await findOne({
         model: userMadel,
-        filter: { _id: verifedData.sub }
+        filter: {
+            _id: verifedData.sub
+        }
     })
 
     if (!user) {
+        throw notfoundException({ message: "Not Register account" })
+
+    }
+    // console.log(changeCredentialsTime: user.changeCredentialsTime?.getTime(), iat: decoded.iat * 1000);
+
+    if (user.changeCredentialsTime && user.changeCredentialsTime?.getTime() >= decoded.iat * 1000) {
         throw unauthorizedException({ message: "Not Register account" })
 
     }
-    return user
+    return { user, decoded }
 
 }

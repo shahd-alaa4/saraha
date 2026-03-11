@@ -1,17 +1,17 @@
- 
+
 import { compare, genSalt, hash } from "bcrypt";
 import { SALT_ROUND } from "../../../config/config.service.js";
 
- export const generateHash = async({plaintext,salt=SALT_ROUND , minor='b'}= {})=>{
-    const generatesalt = await genSalt(salt , minor)
+export const generateHash = async ({ plaintext, salt = SALT_ROUND, minor = 'b' } = {}) => {
+   const generatesalt = await genSalt(salt, minor)
 
-    return await hash(plaintext, generatesalt)
- }
-  
- export const compareHash = async({plaintext,cipherText}= {})=>{
+   return await hash(plaintext, generatesalt)
+}
 
-    const match = await compare(plaintext , cipherText)
+export const compareHash = async ({ plaintext, cipherText } = {}) => {
 
-    return match
- }
+   const match = await compare(plaintext, cipherText)
+
+   return match
+}
 

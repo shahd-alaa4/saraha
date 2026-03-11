@@ -41,7 +41,7 @@ const usersSchema = new mongoose.Schema({
         enum: Object.values(ProviderEname),
         default: ProviderEname.System
     },
-    provider: {
+    role: {
         type: Number,
         enum: Object.values(RoleEname),
         default: RoleEname.User
@@ -71,7 +71,7 @@ const usersSchema = new mongoose.Schema({
     }
 )
 
-usersSchema.virtual('userName').set(function (value) {
+usersSchema.virtual('username').set(function (value) {
     const [firstName, lastName] = value?.split(' ') || []
     this.set({ firstName, lastName })
 }).get(function () {

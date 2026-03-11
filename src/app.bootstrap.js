@@ -4,19 +4,22 @@ import { connectDB } from './DB/index.js'
 import { authRouter, userRouter } from './modules/index.js'
 import express from 'express'
 import cors from "cors"
+import { resolve } from 'node:path'
+import { connectRedis } from './DB/redis.conection.js'
 
 async function bootstrap() {
     const app = express()
     //convert buffer data
-    app.use(cors(),express.json())
+    app.use(cors(), express.json())
     //DB
     await connectDB()
+    await connectRedis()
     //application routing
     app.get('/', (req, res) => res.send('Hello World!'))
     app.use('/auth', authRouter)
     app.use('/user', userRouter)
-
-    app.use("/uploads", express.static("uploads"));
+app.use("/uploads", express.static("uploads"));
+    // app.use("/uploads", express.static(resolve("../uploads")));
 
     //invalid routing
     app.use('{/*dummy}', (req, res) => {

@@ -1,43 +1,92 @@
 import jwt from 'jsonwebtoken';
-import { findById } from './../../DB/database.repository.js';
+import { create, deleteMany, findById, findOne } from './../../DB/database.repository.js';
 import { userMadel } from '../../DB/index.js';
 import { createLoginCredentials, decodeToken } from '../../common/security/token.security.js';
-import { TokenTypeEname } from '../../common/enums/security.enum.js';
-import { badRequestException } from '../../common/utils/response/error.response.js';
+import { LogoutEname, TokenTypeEname } from '../../common/enums/security.enum.js';
+import { badRequestException, conflictException } from '../../common/utils/response/error.response.js';
+import { rsaDecrypt } from '../../common/security/rsa.security.js';
+import { tokenModel } from '../../DB/model/token.model.js';
+import { ACCESS_EXPIRES_IN, REFRESH_EXPIRES_IN } from '../../../config/config.service.js';
+import { baseRevokeTokenKey, deleteKey, keys, revokeTokenKey, set } from '../../common/services/redis.service.js';
+
+const createRevokeToken = async ({ jti ,iat,sub}) => {
+    await set({
+        key: revokeTokenKey({ userId: sub, jti }),
+        value: jti,
+        ttl: iat + REFRESH_EXPIRES_IN
+    })
+    return;
+}
+
+export const logout = async ({ flag }, user, { jti, iat, sub }) => {
+    let status = 200
+    switch (flag) {
+        case LogoutEname.All:
+            user.changeCredentialsTime = new Date()
+            await user.save()
+
+            await deleteKey(await keys(baseRevokeTokenKey(sub)))
+
+
+            break;
+
+        default:
+            await createRevokeToken({
+                userId: sub,
+                jti,
+                ttl: iat + REFRESH_EXPIRES_IN
+            })
+
+            status = 201
+
+            break;
+    }
+    return status
+}
 
 export const profile = async (user) => {
 
     return user
 }
+export const shareProfile = async (userId) => {
+    const profile = await findOne({
+        model: userMadel,
+        filter: {
+            _id: userId
+        },
+        select: "firstName lastName userName email phone picture"
+    })
+    if (profile.phone) {
+        profile.phone = await rsaDecrypt(profile.phone)
+    }
+    return profile
+}
 
-export const rotateToken = async (user, issuer) => {
+export const rotateToken = async (user, { sub, jti, iat }, issuer) => {
+    if ((iat + ACCESS_EXPIRES_IN) * 1000 > Date.now() + (30000)) {
+        throw conflictException({ message: "Current access token still valid" })
+    }
+
+    await createRevokeToken({
+        userId: sub,
+        jti,
+        ttl: iat + REFRESH_EXPIRES_IN
+    })
+
 
     return await createLoginCredentials(user, issuer)
 }
 
-export const uploadProfile = async (userId, file) => {
-    if (!file) {
-        throw badRequestException({ message: "No file uploaded" });
-    }
+export const profileImage = async (file, user) => {
 
-    const user = await userMadel.findByIdAndUpdate(
-        userId,
-        { profilePictures: file.filename },
-      { new: true }
-    );
-    return file.filename;
+    user.profilePicture = file.finalPath
+    await user.save()
+    return user;
 };
 
-export const uploadCover = async (userId, files) => {
-    if (!files?.length) {
-        throw badRequestException({ message: "No file uploaded" });
-    }
-    const filenames = files.map(f => f.filename);
-    const user = await userMadel.findByIdAndUpdate(
-        userId, {
-        $push: { coverProfilePictures: { $each: filenames } }
-    },
-        { new: true }
-    );
-    return filenames;
+export const profileCoverImage = async (files, user) => {
+
+    user.coverprofilePicture = files.map(file => file.finalPath)
+    await user.save()
+    return user;
 };

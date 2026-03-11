@@ -55,7 +55,7 @@ export const find = async ({
 }
 
 
-export const create= async ({
+export const create = async ({
   data,
   options,
   model
@@ -79,7 +79,7 @@ export const updateOne = async ({
   model
 
 } = {}) => {
- 
+
 
   return await model.updateOne(
     filter || {},

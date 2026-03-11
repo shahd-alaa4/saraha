@@ -24,6 +24,7 @@
     "multer": "^2.0.2",
     "nodemailer": "^8.0.1",
     "nodemailer-otp": "^1.0.8",
-    "otp-generator": "^4.0.1"
+    "otp-generator": "^4.0.1",
+    "redis": "^5.11.0"
   }
 }

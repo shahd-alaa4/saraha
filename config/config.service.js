@@ -16,9 +16,14 @@ config({ path: resolve(`./config/${envPath[NODE_ENV]}`) })
 export const port = process.env.PORT ?? 7000
 
 export const DB_URI = process.env.DB_URI
+export const REDIS_URI = process.env.REDIS_URI
 
 export const EMAIL_USER = process.env.EMAIL_USER
 export const EMAIL_PASS = process.env.EMAIL_PASS
+export const APPLICATION_NAME = process.env.APPLICATION_NAME
+export const TWITTER_LINK = process.env.TWITTER_LINK
+export const INSTRAGRAM_LINK = process.env.INSTRAGRAM_LINK
+export const FACEBOOK_LINK = process.env.FACEBOOK_LINK
 
 
 console.log("EMAIL_USER:", EMAIL_USER);
@@ -36,8 +41,8 @@ export const SYSTEM_TOKEN_SECRET_KEY = process.env.SYSTEM_TOKEN_SECRET_KEY
 export const USER_TOKEN_SECRET_KEY = process.env.USER_TOKEN_SECRET_KEY
 export const SYSTEM_REFRESH_TOKEN_SECRET_KEY = process.env.SYSTEM_REFRESH_TOKEN_SECRET_KEY
 export const USER_REFRESH_TOKEN_SECRET_KEY = process.env.USER_REFRESH_TOKEN_SECRET_KEY
-export const ACCESS_EXPIRES_IN = parseInt(process.env.ACCESS_EXPIRES_IN )
-export const REFRESH_EXPIRES_IN = parseInt(process.env.REFRESH_EXPIRES_IN )
+export const ACCESS_EXPIRES_IN = parseInt(process.env.ACCESS_EXPIRES_IN)
+export const REFRESH_EXPIRES_IN = parseInt(process.env.REFRESH_EXPIRES_IN)
 
 export const UPLOAD_PATH = process.env.UPLOAD_PATH || "uploads"
 export const MAX_FILE_SIZE = parseInt(process.env.MAX_FILE_SIZE || 2097152)
